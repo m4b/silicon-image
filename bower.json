@@ -1,0 +1,31 @@
+{
+  "name": "silicon-image",
+  "version": "1.0.0",
+  "authors": [
+    "m4b <m4b.github.io@gmail.com>"
+  ],
+  "description": "A rasterized binary image, with various features, including automatic offset updates via mouse movement.",
+  "keywords": [
+    "binary",
+    "image",
+    "web-component",
+    "web-components",
+    "polymer"
+  ],
+  "main": "silicon-image.html",
+  "license": "LICENSE",
+  "homepage": "https://github.com/m4b/silicon-image/",
+  "ignore": [
+    "/.*",
+    "/test/",
+    "/demo/"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.0.0"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
+    "web-component-tester": "*",
+    "paper-slider": "PolymerElements/paper-slider#master"
+  }
+}

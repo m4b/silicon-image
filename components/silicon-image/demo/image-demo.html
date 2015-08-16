@@ -1,0 +1,56 @@
+<link rel="import" href="../../polymer/polymer.html">
+<link rel="import" href="../silicon-image.html">
+<link rel="import" href="silicon-image-controls.html">
+
+<dom-module id="image-demo">
+  <style>
+    :host {
+      height: 100%;
+      display: flex;
+      flex-flow: column nowrap;
+    }
+
+    #container {
+      flex: 1 1 0;
+      width: 412px;
+      overflow-y: scroll;
+      position: relative;
+      background-color: grey;
+      margin-bottom: 8px;
+    }
+
+    silicon-image-controls {
+      width: 412px;
+    }
+  </style>
+
+  <template>
+
+    <p>An example of
+      <code>&lt;silicon-image&gt;</code>:</p>
+
+    <silicon-image-controls size="[[size]]" offset="[[offset]]" zoom="{{zoom}}"></silicon-image-controls>
+    <div id="container">
+      <silicon-image size="[[size]]" width="400" style="z-index: 10;" zoom="[[zoom]]" offset="{{offset}}"></silicon-image>
+    </div>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'image-demo',
+
+      properties: {
+        zoom: {
+          value: 10
+        },
+        size: {
+          value: 0x4000
+        }
+      },
+
+      ready: function() {
+        //Polymer.dom(this.$.div).setAttribute('style', 'width: 500px;');
+      }
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,220 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="silicon-image-behavior.html">
+
+<!--
+Displays a rasterized binary image with `silicon-image-behavior`.  You need to provide your own containing block,
+as the element has `absolute` positioning so that other images can be stacked.
+
+I suggest something like this if you've got it wrapped in a `<div>`, which itself is in a flexbox:
+
+    div {
+      flex: 1 1 0;
+      width: 412px; <you can change this dynamically>
+      overflow-y: scroll;
+      position: relative;
+      background-color: grey;
+      margin-bottom: 8px;
+    }
+
+or this div:
+
+    div {
+      overflow-y: scroll;
+      height: 200px;
+      width: 412px;
+      position: absolute;
+      background-color: grey;
+    }
+
+Example:
+
+    <silicon-image size="[[size]]" width="400" style="z-index: 10;" zoom="[[zoom]]" offset="{{offset}}"></silicon-image>
+
+@group Silicon Elements
+@element silicon-image
+@demo
+-->
+<dom-module id="silicon-image">
+
+  <style>
+    :host {
+      position: absolute;
+    }
+
+    canvas {
+      z-index: 10;
+      position: absolute;
+    }
+  </style>
+
+  <template>
+    <canvas id="image"></canvas>
+  </template>
+
+</dom-module>
+
+<script>
+  (function() {
+    Polymer({
+
+      is: 'silicon-image',
+
+      behaviors: [Silicon.ImageBehavior],
+
+      properties: {
+        /**
+         * The size of the binary.
+         */
+        size: {
+          type: Number,
+          observer: '_sizeChanged'
+        },
+        /**
+         * The zoom level; directly affects the rectangle size on the canvas for now.
+         */
+        zoom: {
+          type: Number,
+          observer: '_zoomChanged'
+        },
+        /**
+         * **Phuture, unimplemented**: Displays a non-rasterized, linear byte sequence instead
+         * (most of this behavior will reside in `silicon-image-behavior`).
+         * This will provide truncated segment zooming, linear mouse tracking, etc., like how most
+         * binaries are represented in GUIs.
+         */
+        noRaster: {
+          type: Boolean,
+          value: false
+        },
+        /**
+         * Whether to highlight `highlightCount` bytes or not.
+         */
+        noHighlight: {
+          type: Boolean,
+          value: false
+        },
+        /**
+         * Whether to render the background or not.
+         */
+        noBackground: {
+          type: Boolean,
+          value: false
+        },
+        /**
+         * The number of bytes to highlight.
+         */
+        highlightCount: {
+          type: Number,
+          value: 288
+        }
+      },
+
+      listeners: {
+        'image.tap': '_setTracking',
+        'image.mousemove': '_onMouseMove'
+      },
+
+      observers: ['_setDimensions(width, height)'],
+
+      /**
+       * Observer for size changed; sets the behavior's `numBytes` to this value,
+       * forcing a recalculation of the various computed properties, like `height`.
+       */
+      _sizeChanged: function(size) {
+        this.numBytes = size;
+      },
+
+      /**
+       * Observer for `zoom`; changes the underlying behavior's `rectSize` to `zoom`,
+       * forcing a recalculation of the various computed properties, like `height`.
+       *
+       * @param {Number} zoom The zoom to apply
+       */
+      _zoomChanged: function(zoom) {
+        this.rectSize = zoom;
+      },
+
+      /**
+       * Observer for width and height; sets the canvas `image` to those dimensions.
+       *
+       * **NOTE**: undefined behavior currently if the `width * height > MAX_AREA`.
+       * This will be dealt with in later versions, because binaries can be huge.
+       * Will have to enlist luke to help.
+       *
+       * @param {Number} width The new width
+       * @param {Number} height The new height
+       */
+      _setDimensions: function(width, height) {
+        this.$.image.width = width;
+        this.$.image.height = height;
+        this._ctx = this.$.image.getContext('2d');
+        if (!this.noBackground) this._renderBackground();
+        if (width * height >= this.MAX_AREA) console.warn('new image area greater than maximum permitted area');
+        if (debug) console.log('set image dimensions:', width, height, width * height, this.MAX_AREA);
+      },
+
+      /**
+       * Toggles mouse tracking.
+       */
+      _setTracking: function(e) {
+        this.tracking = !this.tracking;
+      },
+
+      /**
+       * Renders the byte highlighter on the image canvas at `offset`.
+       *
+       * @param {Number} newoffset The new offset to render at
+       */
+      _renderByteHighlighter: function(newoffset) {
+        raster = this.index2raster(newoffset);
+        this.drawByteRange(this._ctx, raster.y, raster.x,
+          this.highlightCount, 'gold', true);
+      },
+
+      /**
+       * Renders the background, up to `size` bytes.
+       */
+      _renderBackground: function() {
+        this.drawByteRange(this._ctx, 0, 0, this.size, 'black');
+      },
+
+      /**
+       * The `mousemove` listener; updates `offset` and renders the byte highlighter,
+       * if `tracking` and `noHighlight` are set to the appropriate values.
+       */
+      _onMouseMove: function(e) {
+        if (this.tracking) {
+          var rect = this.$.image.getBoundingClientRect();
+          // canvas space coordinates
+          var x = Math.round((e.clientX - rect.left) / (rect.right - rect.left) * this.width);
+          var y = Math.round((e.clientY - rect.top) / (rect.bottom - rect.top) * this.height);
+
+          // byte space
+          var col = Math.floor(x / this.rectSize);
+          var row = Math.floor(y / this.rectSize);
+
+          //if (debug) console.log('normalized mouse: ', col, row);
+          var newoffset = this.raster2index(row, col);
+          if (newoffset !== this.offset) {
+            var oldoffset = this.offset;
+            this.offset = newoffset; // triggers update to anything binding/watching offset
+            if (!this.noHighlight) {
+              var raster = this.index2raster(oldoffset);
+              // need to clear because can appear after end of bytes
+              this.clearByteRange(this._ctx, raster.y, raster.x, this.highlightCount);
+              if (!this.noBackground) this._renderBackground();
+              this._renderByteHighlighter(newoffset);
+            }
+          }
+        }
+      },
+
+      ready: function() {
+        if (this.debug) console.log('<silicon-image> ready', this.width, this.height);
+        this._ctx = this.$.image.getContext('2d');
+        if (!this.noBackground) this._renderBackground();
+      }
+
+    })
+  })();
+</script>
