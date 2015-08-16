@@ -34,6 +34,8 @@ Example:
 
 As the mouse moves over the image, `offset` is updated, so listen for an `offset-changed` event, or two-way data-bind to `offset` if you're using Polymer.
 
+See the [documentation](http://m4b.github.io/silicon-image) for more information.
+
 # Install
 
 Via bower:
@@ -46,7 +48,7 @@ Example:
 
 ```html
 <head>
-<script src="bower_components/webcomponentsjs/webcomponents-light.js"></script>
+<script src="bower_components/webcomponentsjs/webcomponents-lite.js"></script>
 <link rel="import" href="bower_components/polymer/polymer.html">
 <link rel="import" href="bower_components/silicon-image/silicon-image.html">
 </head>
