@@ -1,0 +1,64 @@
+<link rel="import" href="../../polymer/polymer.html">
+<link rel="import" href="../../paper-slider/paper-slider.html">
+
+<dom-module id="silicon-image-controls">
+  <style>
+  .header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  paper-slider {
+    order: 0;
+    flex: 2 1 auto;
+  }
+  </style>
+
+  <template>
+    <div class="header">
+      <paper-slider pin min="1" max="20" value="{{zoom}}"></paper-slider>
+      <span>[[_offset]]</span>/<span>[[_size]]</span>
+    </div>
+  </template>
+
+  <script>
+  Polymer({
+    is: 'silicon-image-controls',
+    properties: {
+      zoom: {
+        type: Number,
+        value: 10,
+        notify: true
+      },
+      size: {
+        type: Number
+      },
+      offset: {
+        type: Number,
+        value: 0
+      },
+      _offset: {
+        computed: '_pad(offset, size)'
+      },
+      _size: {
+        computed: '_minusOne(size)'
+      }
+    },
+
+    _minusOne: function(size){
+      return size - 1;
+    },
+
+    _pad: function(offset, size){
+      var len = size.toString().length - offset.toString().length;
+      var pad = '';
+      for (var i = 0; i < len; i++){
+        pad += '0';
+      }
+      return pad + offset.toString();
+    }
+  });
+  </script>
+
+</dom-module>

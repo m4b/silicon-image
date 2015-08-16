@@ -1,0 +1,192 @@
+<script>
+  var debug = false;
+
+  var Silicon = Silicon || {};
+
+  Silicon.ImageBehavior = {
+    properties: {
+      /**
+       * This is the size of the binary; you must set this.
+       */
+      numBytes: {
+        type: Number
+      },
+      /**
+       * Whether or not it's a rasterized representation of the binary, or a line of bytes.
+       */
+      line: {
+        type: Boolean,
+        value: false
+      },
+      /**
+       * The current offset in the binary.
+       */
+      offset: {
+        type: Number,
+        value: 0,
+        notify: true
+      },
+      width: {
+        type: Number,
+        value: 400
+      },
+      zoom: {
+        type: Number,
+        value: 1
+      },
+      rectSize: {
+        type: Number,
+        value: 10 // i believe this will be a function of zoom and width, so computed
+      },
+      height: {
+        type: Number,
+        computed: '_computeHeight(width, rectSize, numRows)'
+      },
+      bytesPerRow: {
+        type: Number,
+        computed: '_computeBytesPerRow(width, rectSize)'
+      },
+      numRows: {
+        type: Number,
+        computed: '_computeNumRows(numBytes, bytesPerRow)'
+      },
+      /**
+       * Whether we're tracking or not.  Probably move this out of the behavior?
+       */
+      tracking: {
+        type: Boolean,
+        value: true
+      },
+      /**
+       * The minimum maximum area (Chrome has the smallest maximum area).
+       */
+      MAX_AREA: {
+        type: Number,
+        readOnly: true,
+        value: 268435456
+      }
+    },
+
+    /**
+     * Clears a byte range.
+     *
+     * *NOTE*: this is not exact, and clears a whole block, starting from x=0 to a y large enough
+     * to get all the rectangles cleared.
+     *
+     * @param {DrawingContext} ctx The drawing context
+     * @param {Number} row The row/y coordinate to start the clear at.
+     * @param {Number} col The column/x coordinate to start the clear at (technically unused).
+     * @param {Number} count The number of bytes to clear.
+     */
+    clearByteRange: function(ctx, row, col, count) {
+      var numRows = Math.ceil(count / this.bytesPerRow) + 3; // yes being lazy
+      var x = 0,
+        y = (row - 1) * this.rectSize,
+        width = this.width,
+        height = numRows * this.rectSize;
+      ctx.clearRect(x, y, width, height);
+    },
+
+    /**
+     * Draws a range of bytes, and performs all the annoying scaling,
+     * normalization, and other tediuous details for you.
+     *
+     * TODO: make more efficient by drawing the first row of bytes, a giant section as one draw
+     * and then the last row of bytes; so 3 draw calls max.
+     *
+     * @param {CanvasContext} ctx The drawing context from `getContext('2d')`
+     * @param {Number} row The rasterized image's row/y coordinate
+     * @param {Number} col The rasterized image's col/x coordinate
+     * @param {Number} count The number of bytes to render
+     * @param {CSS Color}  color The color to draw with
+     * @param {Boolean} stroke Whether to fill or stroke
+     */
+    drawByteRange: function(ctx, row, col, count, color, stroke) {
+      ctx.fillStyle = color;
+      var draw = function(x, y, w, h) {
+        ctx.fillRect(x, y, w, h)
+      };
+      if (stroke) {
+        ctx.strokeStyle = color;
+        draw = function(x, y, w, h) {
+          ctx.strokeRect(x, y, w, h)
+        };
+      }
+      var remainingColumnsInRow = this.bytesPerRow - col;
+      var begin = col * this.rectSize;
+      var bytesInColumn = count >= remainingColumnsInRow ? remainingColumnsInRow : count;
+      var end = bytesInColumn * this.rectSize;
+
+      // fill out remaining bytes in this row
+      //ctx.fillRect(begin, row * this.rectSize, end, this.rectSize);
+      draw(begin, row * this.rectSize, end, this.rectSize);
+      count -= bytesInColumn;
+      col = bytesInColumn + 1;
+
+      // count > 0
+      while (count) {
+        row++;
+        begin = 0; //always start at c=0
+        bytesInColumn = count >= this.bytesPerRow ? this.bytesPerRow : count;
+        end = bytesInColumn * this.rectSize;
+        //ctx.fillRect(begin, row * this.rectSize, end, this.rectSize);
+        draw(begin, row * this.rectSize, end, this.rectSize);
+        count -= bytesInColumn
+        col = bytesInColumn + 1;
+      }
+    },
+
+    /**
+     * Computes the number of bytes per row; floors the result,
+     * so unused space < `rectSize` accrues to the east.
+     */
+    _computeBytesPerRow: function(width, rectSize) {
+      if (debug) console.log('_computeBytesPerRow: ', Math.floor(width / rectSize));
+      return Math.floor(width / rectSize);
+    },
+
+    /**
+     * Computes the number of rows.
+     */
+    _computeNumRows: function(numBytes, bytesPerRow) {
+      if (debug) console.log('_computeNumRows: ', Math.ceil(numBytes / bytesPerRow));
+      return Math.ceil(numBytes / bytesPerRow);
+    },
+
+    /**
+     * Computes the height of the element, given the `width`, `rectSize`, and `numRows`.
+     */
+    _computeHeight: function(width, rectSize, numRows) {
+      var height = numRows * rectSize;
+      if (debug) console.log('_computeHeight: ', height);
+      return height;
+    },
+
+    /**
+     * Given a row, and column, (y, x coordinates), returns the index (`offset`)
+     * of the currently computed rasterized image's dimensions.
+     *
+     * @param {Number} row The row (y) coordinate of the rasterized image
+     * @param {Number} col The col (x) coordinate of the rasterized image
+     */
+    raster2index: function(row, col) { // y, x
+      var i = col + (row * this.bytesPerRow);
+      return i;
+    },
+
+    /**
+     * Inverse operation of `raster2index`: given an offset, computes the
+     * rasterized binary's row and column (y, x) coordinates of that offset.
+     *
+     * @param {Number} i The index or offset to find
+     */
+    index2raster: function(i) {
+      var x = i % this.bytesPerRow;
+      var y = (i - x) / this.bytesPerRow;
+      return {
+        x: x,
+        y: y
+      };
+    }
+  }
+</script>
