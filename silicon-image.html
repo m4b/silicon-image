@@ -35,19 +35,17 @@ Example:
 @demo
 -->
 <dom-module id="silicon-image">
-
-  <style>
-    :host {
-      position: absolute;
-    }
-
-    canvas {
-      z-index: 10;
-      position: absolute;
-    }
-  </style>
-
   <template>
+    <style>
+     :host {
+       position: absolute;
+     }
+
+     canvas {
+       z-index: 10;
+       position: absolute;
+     }
+    </style>
     <canvas id="image"></canvas>
   </template>
 
